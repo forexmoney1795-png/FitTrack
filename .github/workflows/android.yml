@@ -1,44 +1,63 @@
-name: FitTrack APK
+function render(){
+  let u=localStorage.getItem(SESSION);
+  if(!u||!account()[u])return;
 
-on:
-  workflow_dispatch:
-  push:
-    branches: [ "main" ]
+  loadForUser(u);
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+  let p=data.profile;
+  let t=totals();
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  let burned=data.day.exercise.reduce(
+    (n,x)=>n+(Number(x.cal)||0),0
+  );
 
-      - name: Extract FitTrack project
-        run: |
-          rm -rf fittrack_project
-          unzip -o FitTrack.zip -d fittrack_project
+  let workoutMinutes=data.day.exercise.reduce(
+    (n,x)=>n+(Number(x.min)||0),0
+  );
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
+  hello.textContent='Good to see you, '+(p.name||'there')+' 👋';
+  avatar.textContent=initials(p.name);
+  bigAvatar.textContent=initials(p.name);
+  profileName.textContent=p.name||'FitTrack user';
+  profileUser.textContent=u;
 
-      - name: Setup Gradle 8.7
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.7'
+  homeCal.textContent=Math.round(t.cal);
+  targetCal.textContent=Math.round(p.cal);
+  leftCal.textContent=Math.max(0,Math.round(p.cal-t.cal));
 
-      - name: Build FitTrack APK
-        run: |
-          PROJECT_ROOT=$(find fittrack_project -name settings.gradle -type f -exec dirname {} \; | head -n 1)
-          echo "Project: $PROJECT_ROOT"
-          cd "$PROJECT_ROOT"
-          gradle assembleDebug
-          cp app/build/outputs/apk/debug/app-debug.apk "$GITHUB_WORKSPACE/FitTrack.apk"
+  calBar.style.width=pct(t.cal,p.cal)+'%';
 
-      - name: Upload FitTrack APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: FitTrack
-          path: FitTrack.apk
+  homeP.textContent=Math.round(t.p);
+  homeC.textContent=Math.round(t.c);
+  homeF.textContent=Math.round(t.f);
+  homeW.textContent=data.day.water;
+
+  tp.textContent=p.p;
+  tc.textContent=p.c;
+  tf.textContent=p.f;
+
+  pBar.style.width=pct(t.p,p.p)+'%';
+  cBar.style.width=pct(t.c,p.c)+'%';
+  fBar.style.width=pct(t.f,p.f)+'%';
+
+  mealSummary.textContent=data.day.foods.length
+    ?data.day.foods.length+' entries logged'
+    :'No food logged yet';
+
+  streak.textContent=Math.min(99,data.history.length+1);
+
+  let h=p.height/100;
+  let bmi=h&&p.weight?p.weight/(h*h):0;
+
+  bmiValue.textContent=bmi?bmi.toFixed(1):'—';
+  bmiLabel.textContent=bmi?bmiLabelText(bmi):'Add profile';
+
+  exerciseKcal.textContent=Math.round(burned)+' kcal';
+  exerciseMinutes.textContent=Math.round(workoutMinutes)+' min';
+
+  renderRecent();
+  renderMeals();
+  renderProgress();
+  renderTools();
+  loadSettings();
+}
